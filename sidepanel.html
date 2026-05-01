@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎤 网页会议录音器</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="sidebar-container">
+    <!-- 头部 -->
+    <div class="header">
+      <div class="header-icon">🎤</div>
+      <div class="header-content">
+        <div class="header-title">网页会议录音器</div>
+        <div class="header-subtitle">AI智能分析 • 说话人区分 • 自动纪要</div>
+      </div>
+    </div>
+
+    <!-- 状态卡片 -->
+    <div class="status-card">
+      <div class="status-row">
+        <div class="status-label">
+          <span>📊</span> 录音状态
+        </div>
+        <div id="recordingStatus" class="status-value status-ready">就绪</div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-label">
+          <span>⏱️</span> 录制时长
+        </div>
+        <div id="recordingTime" class="status-value">00:00:00</div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-label">
+          <span>👥</span> 检测到说话人
+        </div>
+        <div id="speakerCount" class="status-value">0 人</div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-label">
+          <span>💾</span> 文件大小
+        </div>
+        <div id="fileSize" class="status-value">0 MB</div>
+      </div>
+    </div>
+
+    <!-- 录音指示器 -->
+    <div id="recordingIndicator" class="recording-indicator" style="display: none;">
+      <div class="recording-dot"></div>
+      <div>正在录音中...</div>
+    </div>
+
+    <!-- 音频可视化 -->
+    <div class="audio-visualizer">
+      <canvas id="waveformCanvas" class="waveform"></canvas>
+    </div>
+
+    <!-- 说话人显示 -->
+    <div class="speaker-display" id="speakerDisplay">
+      <div class="empty-text">等待检测说话人...</div>
+    </div>
+
+    <!-- 控制按钮 -->
+    <div class="control-buttons">
+      <button id="startBtn" class="btn btn-primary">
+        <span>🔴</span> 开始录音
+      </button>
+
+      <button id="pauseBtn" class="btn btn-secondary" disabled>
+        <span>⏸️</span> 暂停
+      </button>
+
+      <button id="stopBtn" class="btn btn-secondary" disabled>
+        <span>⏹️</span> 停止录音
+      </button>
+
+      <button id="analyzeBtn" class="btn btn-primary" disabled>
+        <span>🤖</span> AI分析
+      </button>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-container">
+      <div class="progress-label">
+        <span>分析进度</span>
+        <span id="progressPercent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+      </div>
+    </div>
+
+    <!-- 实时转文字 -->
+    <div class="transcription-panel">
+      <div class="panel-title">
+        <span>📝</span> 实时转文字
+      </div>
+      <div id="transcriptionList" class="transcription-list">
+        <div class="empty-state">
+          <div class="empty-icon">🎯</div>
+          <div class="empty-text">开始录音后，将显示实时转文字结果</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 分析结果面板 -->
+    <div id="analysisResults" class="analysis-results" style="display: none;"></div>
+
+    <!-- 设置链接 -->
+    <a href="#" id="settingsBtn" class="settings-link">
+      <span>⚙️</span> 打开设置
+    </a>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

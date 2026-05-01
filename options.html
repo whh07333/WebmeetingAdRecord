@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页会议录音扩展 - 设置</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    body {
+      width: 600px;
+      min-height: 400px;
+      padding: 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+    .container {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #667eea;
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 24px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #eee;
+    }
+    .section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #555;
+    }
+    input[type="text"],
+    input[type="number"],
+    select,
+    textarea {
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .checkbox-group input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+    .btn-group {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: #fff;
+    }
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #333;
+    }
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+    .toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #10b981;
+      color: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s;
+      z-index: 9999;
+    }
+    .toast.show {
+      opacity: 1;
+      visibility: visible;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚙️ 扩展设置</h1>
+
+    <div class="section">
+      <div class="section-title">AI 服务配置</div>
+      <div class="form-group">
+        <label for="aiProvider">AI 服务商</label>
+        <select id="aiProvider">
+          <option value="openai">OpenAI</option>
+          <option value="volcengine">火山引擎 Ark</option>
+          <option value="custom">自定义 API</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="apiKey">API Key</label>
+        <input type="text" id="apiKey" placeholder="请输入 API Key">
+      </div>
+      <div class="form-group">
+        <label for="baseUrl">API 地址</label>
+        <input type="text" id="baseUrl" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="form-group">
+        <label for="model">模型名称</label>
+        <input type="text" id="model" placeholder="gpt-3.5-turbo">
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">录音配置</div>
+      <div class="form-group">
+        <label for="audioQuality">录音质量</label>
+        <select id="audioQuality">
+          <option value="low">低 (16kHz)</option>
+          <option value="medium" selected>中 (32kHz)</option>
+          <option value="high">高 (48kHz)</option>
+        </select>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="keepAudioDuringRecording" checked>
+        <label for="keepAudioDuringRecording">录音时保留网页声音</label>
+      </div>
+      <p class="hint" style="font-size: 12px; color: #666; margin-left: 26px;">开启后录音时网页声音正常播放，关闭则网页静音（推荐开启）</p>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="autoSave" checked>
+        <label for="autoSave">录音结束后自动保存到本地</label>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="autoTranscribe" checked>
+        <label for="autoTranscribe">录音结束后自动转写文字</label>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="speakerDiarization" checked>
+        <label for="speakerDiarization">自动区分说话人</label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">会议纪要配置</div>
+      <div class="form-group">
+        <label for="summaryType">纪要类型</label>
+        <select id="summaryType">
+          <option value="brief">简洁摘要</option>
+          <option value="detailed" selected>详细纪要</option>
+          <option value="action">行动项提取</option>
+        </select>
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="autoDownloadSummary" checked>
+        <label for="autoDownloadSummary">生成纪要后自动下载</label>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-secondary" id="resetBtn">恢复默认</button>
+      <button class="btn-primary" id="saveBtn">保存设置</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">设置保存成功！</div>
+
+  <script src="options.js"></script>
+</body>
+</html>
