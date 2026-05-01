@@ -9,7 +9,6 @@ class OffscreenRecorder {
     this.audioChunks = [];
     this.recordingStartTime = null;
     this.messageListenerAdded = false;
-    this.audioElement = null; // 隐藏的Audio元素，用于播放音频流
 
     this.init();
   }
@@ -89,17 +88,6 @@ class OffscreenRecorder {
       });
 
       console.log('[Offscreen] 音频流已获取');
-
-      // 创建隐藏的Audio元素播放音频流，确保录音时能听到页面声音
-      this.audioElement = new Audio();
-      this.audioElement.srcObject = this.audioStream;
-      this.audioElement.volume = 1.0;
-      try {
-        await this.audioElement.play();
-        console.log('[Offscreen] 音频播放已启动，录音时可正常听到页面声音');
-      } catch (playError) {
-        console.warn('[Offscreen] 音频播放启动失败，可能影响播放:', playError.message);
-      }
 
       // 启动 MediaRecorder
       this.audioChunks = [];
@@ -206,14 +194,6 @@ class OffscreenRecorder {
         this.mediaRecorder.stop();
       }
 
-      // 停止并清理Audio元素
-      if (this.audioElement) {
-        this.audioElement.pause();
-        this.audioElement.srcObject = null;
-        this.audioElement = null;
-        console.log('[Offscreen] Audio元素已清理');
-      }
-
       // 停止音频轨道
       if (this.audioStream) {
         this.audioStream.getTracks().forEach(track => {
@@ -238,11 +218,6 @@ class OffscreenRecorder {
       this.isPaused = false;
       this.mediaRecorder = null;
       this.audioStream = null;
-      if (this.audioElement) {
-        this.audioElement.pause();
-        this.audioElement.srcObject = null;
-        this.audioElement = null;
-      }
       sendResponse({ success: false, error: error.message });
     }
   }
