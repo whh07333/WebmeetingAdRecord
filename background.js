@@ -260,10 +260,8 @@ class MeetingRecorderBackground {
       }
 
       // 使用 chrome.tabCapture.getMediaStreamId 获取 streamId
-      // autoMute: false 防止录音时网页自动静音
       const streamId = await chrome.tabCapture.getMediaStreamId({
-        targetTabId: tabId,
-        autoMute: false
+        targetTabId: tabId
       });
 
       if (!streamId) {
