@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Web Meeting Audio Recorder & Analyzer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "录制网页会议音频，AI分析生成会议纪要，区分说话人",
   "permissions": [
     "activeTab",
@@ -49,6 +49,8 @@
         "audio-processor.js",
         "speaker-detector.js",
         "audio-library/*",
+        "lame.min.js",
+        "mp3-encoder.js",
         "icons/icon16.png",
         "icons/icon48.png",
         "icons/icon128.png"

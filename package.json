@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/whh07333/WebmeetingAdRecord/issues"
   },
-  "homepage": "https://github.com/whh07333/WebmeetingAdRecord#readme"
+  "homepage": "https://github.com/whh07333/WebmeetingAdRecord#readme",
+  "dependencies": {
+    "lamejs": "^1.2.1"
+  }
 }

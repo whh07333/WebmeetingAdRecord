@@ -273,7 +273,7 @@ class OffscreenRecorder {
   }
 
   /**
-   * 保存音频数据
+   * 保存音频数据（转换为MP3格式）
    */
   async saveAudio() {
     console.log('[Offscreen] saveAudio 被调用');
@@ -285,11 +285,33 @@ class OffscreenRecorder {
         return;
       }
 
-      const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
-      console.log('[Offscreen] 生成的 Blob 大小:', audioBlob.size);
-      
-      const audioUrl = URL.createObjectURL(audioBlob);
+      // 先合并为 webm Blob
+      const webmBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+      console.log('[Offscreen] webm Blob 大小:', webmBlob.size);
+
+      // 转换为 MP3
+      let finalBlob;
+      try {
+        if (typeof Mp3Encoder !== 'undefined') {
+          console.log('[Offscreen] 开始将 webm 转换为 MP3...');
+          const audioQuality = this.getAudioQuality();
+          finalBlob = await Mp3Encoder.convertWebmToMp3(webmBlob, audioQuality);
+          console.log('[Offscreen] MP3 转换完成，大小:', finalBlob.size);
+        } else {
+          console.warn('[Offscreen] Mp3Encoder 不可用，回退保存为 webm');
+          finalBlob = webmBlob;
+        }
+      } catch (encodeError) {
+        console.error('[Offscreen] MP3 编码失败，回退保存为 webm:', encodeError);
+        finalBlob = webmBlob;
+      }
+
+      const audioUrl = URL.createObjectURL(finalBlob);
       const duration = this.recordingStartTime ? Date.now() - this.recordingStartTime : 0;
+
+      // 根据最终格式决定文件扩展名
+      const isMp3 = finalBlob.type === 'audio/mpeg';
+      const ext = isMp3 ? 'mp3' : 'webm';
 
       // 生成文件名
       const timeToUse = this.recordingStopTime || this.recordingStartTime || Date.now();
@@ -300,9 +322,9 @@ class OffscreenRecorder {
       const hours = String(timeDate.getHours()).padStart(2, '0');
       const minutes = String(timeDate.getMinutes()).padStart(2, '0');
       const seconds = String(timeDate.getSeconds()).padStart(2, '0');
-      const filename = `录音_${year}${month}${day}_${hours}${minutes}${seconds}.webm`;
+      const filename = `录音_${year}${month}${day}_${hours}${minutes}${seconds}.${ext}`;
 
-      console.log('[Offscreen] 开始保存录音，文件:', filename);
+      console.log('[Offscreen] 开始保存录音，文件:', filename, '格式:', ext);
 
       // 发送到 background（必须等待发送完成）
       try {
@@ -330,6 +352,14 @@ class OffscreenRecorder {
     } catch (error) {
       console.error('[Offscreen] 保存录音失败:', error);
     }
+  }
+
+  /**
+   * 获取当前音频质量设置
+   */
+  getAudioQuality() {
+    // 默认使用 medium，后续可从 background 获取用户设置
+    return 'medium';
   }
 }
 
