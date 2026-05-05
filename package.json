@@ -1,0 +1,21 @@
+{
+  "name": "web-meeting-recorder-extension",
+  "version": "1.0.0",
+  "description": "一个功能强大的 Chrome 扩展，专门用于录制网页会议音频、保存音频文件，并调用 AI 模型进行音频分析，生成会议纪要，支持说话人区分。",
+  "main": "audio-processor.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whh07333/WebmeetingAdRecord.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/whh07333/WebmeetingAdRecord/issues"
+  },
+  "homepage": "https://github.com/whh07333/WebmeetingAdRecord#readme"
+}

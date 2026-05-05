@@ -77,6 +77,12 @@ class OffscreenRecorder {
     try {
       console.log('[Offscreen] 开始捕获音频，streamId:', streamId.substring(0, 20) + '...');
 
+      // 检查是否有未保存的录音数据，如果有，先保存
+      if (this.audioChunks.length > 0) {
+        console.log('[Offscreen] 发现未保存的数据，先保存...');
+        await this.saveAudio();
+      }
+
       // 使用 streamId 获取音频流
       this.audioStream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -119,11 +125,17 @@ class OffscreenRecorder {
       this.mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           this.audioChunks.push(event.data);
+          // 每10个chunk打印一次日志
+          if (this.audioChunks.length % 10 === 0) {
+            console.log('[Offscreen] 已收集 chunks:', this.audioChunks.length, '累计大小:', 
+              this.audioChunks.reduce((sum, chunk) => sum + chunk.size, 0));
+          }
         }
       };
 
+      // onstop 事件不再调用 saveAudio()，由 stopCapture 统一处理
       this.mediaRecorder.onstop = () => {
-        this.saveAudio();
+        console.log('[Offscreen] MediaRecorder onstop 事件触发');
       };
 
       this.mediaRecorder.onerror = (event) => {
@@ -193,7 +205,10 @@ class OffscreenRecorder {
    * 停止捕获
    */
   async stopCapture(sendResponse) {
+    console.log('[Offscreen] stopCapture 被调用，isRecording:', this.isRecording);
+    
     if (!this.isRecording) {
+      console.log('[Offscreen] 当前不在录音状态');
       sendResponse({ success: true, message: '已经停止' });
       return;
     }
@@ -201,44 +216,53 @@ class OffscreenRecorder {
     try {
       console.log('[Offscreen] 停止录音...');
 
-      // 停止录音器
+      // 记录停止时间，用于文件名
+      this.recordingStopTime = Date.now();
+      console.log('[Offscreen] audioChunks 数量:', this.audioChunks.length);
+
+      // 触发 onstop 事件（不会立即执行 onstop 回调）
       if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+        console.log('[Offscreen] 停止 MediaRecorder');
         this.mediaRecorder.stop();
       }
 
       // 停止音频轨道
       if (this.audioStream) {
+        console.log('[Offscreen] 停止音频轨道');
         this.audioStream.getTracks().forEach(track => {
           track.stop();
-          console.log('[Offscreen] 音频轨道已停止:', track.kind);
         });
       }
 
-      // 清理Audio元素，释放资源
+      // 清理Audio元素
       if (this.audioElement) {
         this.audioElement.pause();
         this.audioElement.srcObject = null;
         this.audioElement = null;
-        console.log('[Offscreen] 音频播放元素已清理');
       }
 
-      // 完全清理状态
+      // 保存录音数据
+      console.log('[Offscreen] 开始调用 saveAudio');
+      await this.saveAudio();
+      console.log('[Offscreen] saveAudio 完成');
+
+      // 清理状态
       this.isRecording = false;
       this.isPaused = false;
       this.mediaRecorder = null;
       this.audioStream = null;
+      this.recordingStartTime = null;
+      this.recordingStopTime = null;
 
-      console.log('[Offscreen] 录音已停止，正在保存...');
+      console.log('[Offscreen] 录音已停止并保存完成');
       sendResponse({ success: true, message: '录音已停止' });
 
     } catch (error) {
       console.error('[Offscreen] 停止录音失败:', error);
-      // 即使出错也清理状态
       this.isRecording = false;
       this.isPaused = false;
       this.mediaRecorder = null;
       this.audioStream = null;
-      // 清理Audio元素
       if (this.audioElement) {
         this.audioElement.pause();
         this.audioElement.srcObject = null;
@@ -252,6 +276,9 @@ class OffscreenRecorder {
    * 保存音频数据
    */
   async saveAudio() {
+    console.log('[Offscreen] saveAudio 被调用');
+    console.log('[Offscreen] audioChunks.length:', this.audioChunks.length);
+    
     try {
       if (this.audioChunks.length === 0) {
         console.warn('[Offscreen] 没有录音数据可保存');
@@ -259,33 +286,46 @@ class OffscreenRecorder {
       }
 
       const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+      console.log('[Offscreen] 生成的 Blob 大小:', audioBlob.size);
+      
       const audioUrl = URL.createObjectURL(audioBlob);
-      const duration = Date.now() - this.recordingStartTime;
+      const duration = this.recordingStartTime ? Date.now() - this.recordingStartTime : 0;
 
       // 生成文件名
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = String(now.getSeconds()).padStart(2, '0');
+      const timeToUse = this.recordingStopTime || this.recordingStartTime || Date.now();
+      const timeDate = new Date(timeToUse);
+      const year = timeDate.getFullYear();
+      const month = String(timeDate.getMonth() + 1).padStart(2, '0');
+      const day = String(timeDate.getDate()).padStart(2, '0');
+      const hours = String(timeDate.getHours()).padStart(2, '0');
+      const minutes = String(timeDate.getMinutes()).padStart(2, '0');
+      const seconds = String(timeDate.getSeconds()).padStart(2, '0');
       const filename = `录音_${year}${month}${day}_${hours}${minutes}${seconds}.webm`;
 
-      // 发送到 background 进行保存
-      chrome.runtime.sendMessage({
-        type: 'saveRecording',
-        audioUrl: audioUrl,
-        filename: filename,
-        duration: duration
-      });
+      console.log('[Offscreen] 开始保存录音，文件:', filename);
 
-      // 清理
+      // 发送到 background（必须等待发送完成）
+      try {
+        const response = await chrome.runtime.sendMessage({
+          type: 'saveRecording',
+          audioUrl: audioUrl,
+          filename: filename,
+          duration: duration
+        });
+        console.log('[Offscreen] 保存响应:', response);
+      } catch (msgError) {
+        console.error('[Offscreen] 发送录音消息失败:', msgError);
+      }
+
+      // 清理数据
       this.audioChunks = [];
-      this.recordingStartTime = null;
+      console.log('[Offscreen] 数据已清理');
 
       // 延迟清理 URL
-      setTimeout(() => URL.revokeObjectURL(audioUrl), 5000);
+      setTimeout(() => {
+        URL.revokeObjectURL(audioUrl);
+        console.log('[Offscreen] Blob URL 已清理');
+      }, 3000);
 
     } catch (error) {
       console.error('[Offscreen] 保存录音失败:', error);

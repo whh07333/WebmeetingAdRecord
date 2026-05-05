@@ -4,6 +4,8 @@ class MeetingRecorderBackground {
   constructor() {
     this.settings = null;
     this.offscreenDocumentCreated = false;
+    this.isRecording = false;
+    this.keepAliveInterval = null;
 
     this.init();
   }
@@ -30,6 +32,25 @@ class MeetingRecorderBackground {
       chrome.action.onClicked.addListener((tab) => {
         this.openSidePanel(tab);
       });
+    }
+  }
+
+  // 启动 keep-alive（录音时保持 Service Worker 活跃）
+  startKeepAlive() {
+    if (this.keepAliveInterval) return;
+    console.log('[Meeting Recorder] 启动 keep-alive');
+    this.keepAliveInterval = setInterval(() => {
+      // 发送 ping 到 offscreen 获取状态
+      chrome.runtime.sendMessage({ type: 'getCaptureStatus' }).catch(() => {});
+    }, 10000); // 每 10 秒一次
+  }
+
+  // 停止 keep-alive
+  stopKeepAlive() {
+    if (this.keepAliveInterval) {
+      console.log('[Meeting Recorder] 停止 keep-alive');
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
     }
   }
 
@@ -108,20 +129,22 @@ class MeetingRecorderBackground {
    * 创建 Offscreen Document
    */
   async createOffscreenDocument() {
-    if (this.offscreenDocumentCreated) {
-      try {
-        // 检查是否已存在
-        const existingContexts = await chrome.runtime.getContexts({
-          contextTypes: ['OFFSCREEN_DOCUMENT'],
-          documentUrls: [chrome.runtime.getURL('offscreen.html')]
-        });
+    try {
+      // 先检查是否已存在offscreen document
+      const existingContexts = await chrome.runtime.getContexts({
+        contextTypes: ['OFFSCREEN_DOCUMENT'],
+        documentUrls: [chrome.runtime.getURL('offscreen.html')]
+      });
 
-        if (existingContexts.length > 0) {
-          console.log('[Meeting Recorder] Offscreen Document 已存在');
-          return;
-        }
-      } catch (e) {
-        // 忽略错误，继续创建
+      if (existingContexts.length > 0) {
+        // 已存在，先关闭再创建新的
+        console.log('[Meeting Recorder] 检测到已存在的Offscreen Document，先关闭');
+        await this.closeOffscreenDocument();
+      }
+    } catch (e) {
+      // 检查失败，尝试关闭（如果存在）
+      if (this.offscreenDocumentCreated) {
+        await this.closeOffscreenDocument();
       }
     }
 
@@ -136,9 +159,11 @@ class MeetingRecorderBackground {
     } catch (error) {
       if (error.message.includes('already exists')) {
         this.offscreenDocumentCreated = true;
-        console.log('[Meeting Recorder] Offscreen Document 已存在');
+        console.log('[Meeting Recorder] Offscreen Document 已存在（创建时检测）');
       } else {
         console.error('[Meeting Recorder] 创建 Offscreen Document 失败:', error);
+        // 创建失败时重置状态
+        this.offscreenDocumentCreated = false;
         throw error;
       }
     }
@@ -282,14 +307,20 @@ class MeetingRecorderBackground {
 
       if (response && response.success) {
         console.log('[Meeting Recorder] 录音已启动');
+        this.isRecording = true;
+        this.startKeepAlive();
         sendResponse({ success: true, message: '录音已开始' });
       } else {
+        // 启动失败，清理offscreen document
+        await this.closeOffscreenDocument();
         const errorMsg = response?.error || '未知错误';
         sendResponse({ success: false, error: errorMsg });
       }
 
     } catch (error) {
       console.error('[Meeting Recorder] 启动录音失败:', error);
+      // 发生错误时也要清理offscreen document
+      await this.closeOffscreenDocument();
       sendResponse({ success: false, error: error.message });
     }
   }
@@ -317,6 +348,9 @@ class MeetingRecorderBackground {
 
       if (response && response.success) {
         console.log('[Meeting Recorder] 录音已停止');
+        this.isRecording = false;
+        this.stopKeepAlive();
+        // 注意：不在这里关闭Offscreen Document，等saveRecording完成后再关闭
         sendResponse({ success: true, message: '录音已停止' });
       } else {
         sendResponse({ success: false, error: response?.error || '停止失败' });
@@ -344,19 +378,24 @@ class MeetingRecorderBackground {
    */
   async saveRecording(audioUrl, filename, duration) {
     try {
-      console.log('[Meeting Recorder] 保存录音文件:', filename);
+      console.log('[Meeting Recorder] ===== 开始保存录音 =====');
+      console.log('[Meeting Recorder] 文件名:', filename);
+      console.log('[Meeting Recorder] 时长:', duration, 'ms');
+      console.log('[Meeting Recorder] audioUrl:', audioUrl);
 
       // 检查是否启用自动保存（默认开启）
       const autoSave = this.settings.autoSave !== false;
+      console.log('[Meeting Recorder] autoSave 设置:', autoSave);
 
       if (autoSave) {
+        console.log('[Meeting Recorder] 开始下载...');
         // 自动下载音频文件
-        await chrome.downloads.download({
+        const downloadId = await chrome.downloads.download({
           url: audioUrl,
           filename: filename,
           saveAs: false
         });
-
+        console.log('[Meeting Recorder] 下载返回的 ID:', downloadId);
         console.log('[Meeting Recorder] 录音已自动保存:', filename);
       } else {
         console.log('[Meeting Recorder] 自动保存已禁用，跳过下载');
@@ -387,6 +426,16 @@ class MeetingRecorderBackground {
 
       console.log('[Meeting Recorder] 录音处理完成:', filename);
 
+      // 延迟关闭 Offscreen Document（避免消息通道问题）
+      setTimeout(async () => {
+        try {
+          await this.closeOffscreenDocument();
+          console.log('[Meeting Recorder] Offscreen Document 已在延迟后关闭');
+        } catch (e) {
+          console.log('[Meeting Recorder] 延迟关闭 Offscreen Document 结果:', e.message);
+        }
+      }, 1000);
+
     } catch (error) {
       console.error('[Meeting Recorder] 保存录音失败:', error);
 
@@ -399,6 +448,9 @@ class MeetingRecorderBackground {
           priority: 2
         });
       }
+
+      // 保存失败时也要清理offscreen document
+      await this.closeOffscreenDocument();
     }
   }
 

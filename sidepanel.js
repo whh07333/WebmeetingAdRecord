@@ -237,13 +237,19 @@ class MeetingRecorderSidePanel {
    * 停止录音（直接向background发送消息）
    */
   async stopRecording() {
-    if (!this.isRecording) return;
+    console.log('[SidePanel] stopRecording 被调用, isRecording:', this.isRecording);
+    
+    if (!this.isRecording) {
+      console.log('[SidePanel] 当前不在录音状态，忽略停止请求');
+      return;
+    }
 
     try {
-      console.log('停止录音...');
+      console.log('[SidePanel] 正在停止录音...');
 
       // 直接向background发送停止请求
-      await chrome.runtime.sendMessage({ type: 'stopRecording' });
+      const response = await chrome.runtime.sendMessage({ type: 'stopRecording' });
+      console.log('[SidePanel] background 响应:', response);
 
       this.stopTimer();
       this.stopAudioVisualization();
@@ -258,9 +264,9 @@ class MeetingRecorderSidePanel {
       this.updateUIState();
       this.showNotification('录音已停止', 'info');
 
-      console.log('录音已停止');
+      console.log('[SidePanel] 录音已停止');
     } catch (error) {
-      console.error('停止录音失败:', error);
+      console.error('[SidePanel] 停止录音失败:', error);
       this.showError(`停止录音失败: ${error.message}`);
     }
   }
